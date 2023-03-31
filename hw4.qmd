@@ -14,13 +14,21 @@ library(RedditExtractoR)
 library(tidyr)
 library(tidytext)
 
-info <- get_thread_content("https://www.reddit.com/r/NoStupidQuestions/comments/126sapx/is_it_normal_to_dislike_recieving_gifts/")
-
-thread <- info$thread
-
-comments <- info$comments
 ```
 
+```{r}
+#| eval: false
+# run this code interactively to save the rds file in your project folder
+
+info <- get_thread_content("https://www.reddit.com/r/NoStupidQuestions/comments/126sapx/is_it_normal_to_dislike_recieving_gifts/")
+write_rds(info, "info")
+
+```
+
+```{r}
+info <- read_rds("info")
+comments <- info$comments
+```
 
 ##1. word analysis of post and comments
 ```{r}
@@ -36,7 +44,8 @@ word_analysis <- comments %>%
 word_analysis <- word_analysis %>%
   mutate(rownumber = row_number())
 
-word_analysis <- bind_tf_idf(tbl = word_analysis, term = word, document = rownumber, n = n)
+word_analysis <- bind_tf_idf(tbl = word_analysis, term = word, document = rownumber, n = n) %>%
+  arrange(desc(tf_idf))
 
 ```
 
@@ -44,19 +53,32 @@ word_analysis <- bind_tf_idf(tbl = word_analysis, term = word, document = rownum
 visualization
 ```{r}
 word_analysis %>%
-  slice_head(n = 5) %>%
+  filter(tf_idf > 1.9) %>%
   ggplot(aes(x = tf_idf, y = word, fill = author))+
   geom_col()
 ```
 
-##2. Working with lists
+
+##2. working with lists
 ```{r}
+#| eval: false
 user <- "reallyrickastley"
 
 rick_astley <- get_user_content(user)
+rick_astley <- tibble(rick_astley)
+  
+write_rds(rick_astley, "rick_astley")
+```
 
-userR <- tibble(rick_astley) %>% 
-  unnest_longer(rick_astley) %>%
+
+```{r}
+
+rick_astley <- read_rds("rick_astley")
+
+userR <- rick_astley %>% 
+  unnest_longer(col = rick_astley) 
+
+userR <- userR %>%
   pivot_wider(names_from = rick_astley_id, 
               values_from = rick_astley) %>%
   unnest_wider(comments) %>%
@@ -84,8 +106,8 @@ comment_analysis <-
 visualization
 ```{r}
 comment_analysis %>%
-  slice_head(n = 10) %>%
-  ggplot(aes(x = tf_idf, y = word, fill = n))+
+  filter(n > 11) %>%
+  ggplot(aes(x = n, y = word, fill = tf_idf))+
     geom_col()
 ```
 
