@@ -3,9 +3,89 @@ title: "hw4"
 author: "Amanda Jaworsky"
 format: html
 embed-resources: true
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r}
+#install.packages("RedditExtractoR")
+library(tidyverse)
+library(RedditExtractoR)
+library(tidyr)
+library(tidytext)
 
+info <- get_thread_content("https://www.reddit.com/r/NoStupidQuestions/comments/126sapx/is_it_normal_to_dislike_recieving_gifts/")
+
+thread <- info$thread
+
+comments <- info$comments
+```
+
+
+##1. word analysis of post and comments
+```{r}
+word_analysis <- comments %>% 
+  unnest_tokens(output = "word", 
+                input = "comment",
+                token = "words", 
+                format = "text") %>%
+                anti_join(stop_words) %>%
+                group_by(author) %>%
+                count(word, sort = TRUE) 
+
+word_analysis <- word_analysis %>%
+  mutate(rownumber = row_number())
+
+word_analysis <- bind_tf_idf(tbl = word_analysis, term = word, document = rownumber, n = n)
+
+```
+
+
+visualization
+```{r}
+word_analysis %>%
+  slice_head(n = 5) %>%
+  ggplot(aes(x = tf_idf, y = word, fill = author))+
+  geom_col()
+```
+
+##2. Working with lists
+```{r}
+user <- "reallyrickastley"
+
+rick_astley <- get_user_content(user)
+
+userR <- tibble(rick_astley) %>% 
+  unnest_longer(rick_astley) %>%
+  pivot_wider(names_from = rick_astley_id, 
+              values_from = rick_astley) %>%
+  unnest_wider(comments) %>%
+  unnest_longer(comment)
+
+user_comments <- userR %>% 
+  unnest_tokens(output= word, 
+                input = comment, 
+                token = "words") %>%
+  select("word")
+
+```
+
+analyzing comments
+```{r}
+user_comments <- user_comments %>% 
+  anti_join(stop_words) %>%
+  count(word, sort = TRUE) %>%
+  mutate(rownumber = row_number())
+
+comment_analysis <- 
+ bind_tf_idf(tbl = user_comments, term = word, document = rownumber, n = n)
+```
+
+visualization
+```{r}
+comment_analysis %>%
+  slice_head(n = 10) %>%
+  ggplot(aes(x = tf_idf, y = word, fill = n))+
+    geom_col()
 ```
 
